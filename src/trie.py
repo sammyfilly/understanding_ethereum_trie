@@ -34,10 +34,10 @@ def nibbles_to_bin(nibbles):
     if len(nibbles) % 2:
         raise Exception("nibbles must be of even numbers")
 
-    res = ''
-    for i in range(0, len(nibbles), 2):
-        res += chr(16 * nibbles[i] + nibbles[i + 1])
-    return res
+    return ''.join(
+        chr(16 * nibbles[i] + nibbles[i + 1])
+        for i in range(0, len(nibbles), 2)
+    )
 
 
 NIBBLE_TERMINATOR = 16
@@ -78,14 +78,11 @@ def pack_nibbles(nibbles):
 
     oddlen = len(nibbles) % 2
     flags |= oddlen   # set lowest bit if odd number of nibbles
-    if oddlen:
-        nibbles = [flags] + nibbles
-    else:
-        nibbles = [flags, 0] + nibbles
-    o = ''
-    for i in range(0, len(nibbles), 2):
-        o += chr(16 * nibbles[i] + nibbles[i + 1])
-    return o
+    nibbles = [flags] + nibbles if oddlen else [flags, 0] + nibbles
+    return ''.join(
+        chr(16 * nibbles[i] + nibbles[i + 1])
+        for i in range(0, len(nibbles), 2)
+    )
 
 
 def unpack_to_nibbles(bindata):
@@ -98,10 +95,7 @@ def unpack_to_nibbles(bindata):
     flags = o[0]
     if flags & 2:
         o.append(NIBBLE_TERMINATOR)
-    if flags & 1 == 1:
-        o = o[1:]
-    else:
-        o = o[2:]
+    o = o[1:] if flags & 1 == 1 else o[2:]
     return o
 
 
@@ -109,9 +103,7 @@ def starts_with(full, part):
     ''' test whether the items in the part is
     the leading items of the full
     '''
-    if len(full) < len(part):
-        return False
-    return full[:len(part)] == part
+    return False if len(full) < len(part) else full[:len(part)] == part
 
 
 (
@@ -166,7 +158,7 @@ class Trie(object):
             self.root_node = BLANK_NODE
             return
         assert isinstance(root_hash, (str, unicode))
-        assert len(root_hash) in [0, 32]
+        assert len(root_hash) in {0, 32}
         self.root_node = self._decode_to_node(root_hash)
 
     def clear(self):
@@ -544,14 +536,11 @@ class Trie(object):
 
         if is_key_value_type(node_type):
             value_is_node = node_type == NODE_TYPE_EXTENSION
-            if value_is_node:
-                return self._get_size(self._decode_to_node(node[1]))
-            else:
-                return 1
+            return self._get_size(self._decode_to_node(node[1])) if value_is_node else 1
         elif node_type == NODE_TYPE_BRANCH:
             sizes = [self._get_size(self._decode_to_node(node[x]))
                      for x in range(16)]
-            sizes = sizes + [1 if node[-1] else 0]
+            sizes += [1 if node[-1] else 0]
             return sum(sizes)
 
     def _to_dict(self, node):
@@ -601,10 +590,7 @@ class Trie(object):
         d = self._to_dict(self.root_node)
         res = {}
         for key_str, value in d.iteritems():
-            if key_str:
-                nibbles = [int(x) for x in key_str.split('+')]
-            else:
-                nibbles = []
+            nibbles = [int(x) for x in key_str.split('+')] if key_str else []
             key = nibbles_to_bin(without_terminator(nibbles))
             res[key] = value
         return res
@@ -655,9 +641,7 @@ class Trie(object):
         self.db.commit()
 
     def root_hash_valid(self):
-        if self.root_hash == BLANK_ROOT:
-            return True
-        return self.root_hash in self.db
+        return True if self.root_hash == BLANK_ROOT else self.root_hash in self.db
 
 if __name__ == "__main__":
     import sys

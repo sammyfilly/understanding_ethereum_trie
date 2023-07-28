@@ -9,14 +9,11 @@ class DB(object):
     def __init__(self, dbfile):
         self.dbfile = dbfile
         if dbfile not in databases:
-            databases[dbfile] = (
-                leveldb.LevelDB(dbfile), dict(), threading.Lock())
+            databases[dbfile] = leveldb.LevelDB(dbfile), {}, threading.Lock()
         self.db, self.uncommitted, self.lock = databases[dbfile]
 
     def get(self, key):
-        if key in self.uncommitted:
-            return self.uncommitted[key]
-        return self.db.Get(key)
+        return self.uncommitted[key] if key in self.uncommitted else self.db.Get(key)
 
     def put(self, key, value):
         with self.lock:
