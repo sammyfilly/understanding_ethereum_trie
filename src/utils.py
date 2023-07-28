@@ -44,7 +44,7 @@ def zpad(x, l):
 def coerce_addr_to_bin(x):
     if isinstance(x, (int, long)):
         return zpad(int_to_big_endian(x), 20).encode('hex')
-    elif len(x) == 40 or len(x) == 0:
+    elif len(x) in {40, 0}:
         return x.decode('hex')
     else:
         return zpad(x, 20)[-20:]
@@ -53,7 +53,7 @@ def coerce_addr_to_bin(x):
 def coerce_addr_to_hex(x):
     if isinstance(x, (int, long)):
         return zpad(int_to_big_endian(x), 20).encode('hex')
-    elif len(x) == 40 or len(x) == 0:
+    elif len(x) in {40, 0}:
         return x
     else:
         return zpad(x, 20)[-20:].encode('hex')
@@ -118,9 +118,10 @@ def decode_bin(v):
 
 def decode_addr(v):
     '''decodes an address from serialization'''
-    if len(v) not in [0, 20]:
+    if len(v) in {0, 20}:
+        return v.encode('hex')
+    else:
         raise Exception("Serialized addresses must be empty or 20 bytes long!")
-    return v.encode('hex')
 
 
 def decode_int(v):
@@ -135,7 +136,7 @@ def decode_root(root):
         if len(rlp.encode(root)) >= 32:
             raise Exception("Direct RLP roots must have length <32")
     elif isinstance(root, (str, unicode)):
-        if len(root) != 0 and len(root) != 32:
+        if len(root) not in [0, 32]:
             raise Exception("String roots must be empty or length-32")
     else:
         raise Exception("Invalid root")
@@ -161,9 +162,10 @@ def encode_root(v):
 
 def encode_addr(v):
     '''encodes an address into serialization'''
-    if not isinstance(v, (str, unicode)) or len(v) not in [0, 40]:
+    if isinstance(v, (str, unicode)) and len(v) in {0, 40}:
+        return v.decode('hex')
+    else:
         raise Exception("Address must be empty or 40 chars long")
-    return v.decode('hex')
 
 
 def encode_int(v):
@@ -221,13 +223,17 @@ def print_func_call(ignore_first_arg=False, max_call_number=100):
             local['call_number'] = local['call_number'] + 1
             tmp_args = args[1:] if ignore_first_arg and len(args) else args
             this_call_number = local['call_number']
-            print('{0}#{1} args: {2}, {3}'.format(
-                f.__name__,
-                this_call_number,
-                ', '.join([display(x) for x in tmp_args]),
-                ', '.join(display(key) + '=' + str(value)
-                          for key, value in kwargs.iteritems())
-            ))
+            print(
+                '{0}#{1} args: {2}, {3}'.format(
+                    f.__name__,
+                    this_call_number,
+                    ', '.join([display(x) for x in tmp_args]),
+                    ', '.join(
+                        f'{display(key)}={str(value)}'
+                        for key, value in kwargs.iteritems()
+                    ),
+                )
+            )
             res = f(*args, **kwargs)
             print('{0}#{1} return: {2}'.format(
                 f.__name__,
@@ -237,7 +243,9 @@ def print_func_call(ignore_first_arg=False, max_call_number=100):
             if local['call_number'] > 100:
                 raise Exception("Touch max call number!")
             return res
+
         return wrapper
+
     return inner
 
 
@@ -302,23 +310,21 @@ def configure_logging(loggerlevels=':DEBUG', verbosity=1):
                 format='[%(asctime)s] %(name)s %(levelname)s %(threadName)s:'
                 ' %(message)s'
             ),
-            minimal=dict(
-                format='%(message)s'
-            ),
+            minimal=dict(format='%(message)s'),
         ),
         handlers=dict(
             default={
                 'level': 'INFO',
                 'class': 'logging.StreamHandler',
-                'formatter': 'minimal'
+                'formatter': 'minimal',
             },
             verbose={
                 'level': 'DEBUG',
                 'class': 'logging.StreamHandler',
-                'formatter': 'debug'
+                'formatter': 'debug',
             },
         ),
-        loggers=dict()
+        loggers={},
     )
 
     for loggerlevel in filter(lambda _: ':' in _, loggerlevels.split(',')):

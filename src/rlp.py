@@ -39,7 +39,7 @@ def int_to_big_endian(integer):
         return ''
     s = '%x' % integer
     if len(s) & 1:
-        s = '0' + s
+        s = f'0{s}'
     return s.decode('hex')
 
 
@@ -135,7 +135,7 @@ def descend(data, *indices):
     for i in indices:
         finish_pos = next_item_pos(data, pos)
         pos = into(data, pos)
-        for j in range(i):
+        for _ in range(i):
             pos = next_item_pos(data, pos)
             if pos >= finish_pos:
                 raise Exception("End of list")
@@ -155,14 +155,11 @@ def encode_length(L, offset):
 def encode(s):
     if isinstance(s, (str, unicode)):
         s = str(s)
-        if len(s) == 1 and ord(s) < 128:
-            return s
-        else:
-            return encode_length(len(s), 128) + s
+        return s if len(s) == 1 and ord(s) < 128 else encode_length(len(s), 128) + s
     elif isinstance(s, list):
         return concat(map(encode, s))
 
-    raise TypeError("Encoding of %s not supported" % type(s))
+    raise TypeError(f"Encoding of {type(s)} not supported")
 
 
 def concat(s):
